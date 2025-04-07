@@ -73,3 +73,14 @@ class WithdrawalActionSchema(Schema):
         [WithdrawalStatus.APPROVED.value, WithdrawalStatus.REJECTED.value]
     ))
     admin_comment = fields.Str(required=False)
+    
+class GroupUpdateSchema(Schema):
+    name = fields.Str(
+        required=False,
+        validate=validate.Length(min=1, max=100, error="Name must be between 1-100 characters")
+    )
+    description = fields.Str(required=False, allow_none=True)
+    target_amount = fields.Float(
+        required=False,
+        validate=validate.Range(min=0.01, error="Target amount must be positive")
+    )    

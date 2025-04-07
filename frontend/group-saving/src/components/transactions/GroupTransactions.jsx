@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
-import { getUserTransactions } from '../../services/TransactionService';
+import { getGroupTransactions } from '../../services/TransactionService';
 import LoadingSpinner from '../common/LoadingSpinner';
 import ErrorMessage from '../common/ErrorMessage';
 
-const TransactionList = () => {
+const GroupTransactions = ({ groupId }) => {
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -11,7 +11,7 @@ const TransactionList = () => {
   useEffect(() => {
     const fetchTransactions = async () => {
       try {
-        const response = await getUserTransactions();
+        const response = await getGroupTransactions(groupId);
         setTransactions(response.transactions);
       } catch (err) {
         setError(err.message);
@@ -21,7 +21,7 @@ const TransactionList = () => {
     };
 
     fetchTransactions();
-  }, []);
+  }, [groupId]);
 
   if (loading) {
     return <LoadingSpinner />;
@@ -29,7 +29,7 @@ const TransactionList = () => {
 
   return (
     <div className="bg-white shadow rounded-lg p-6">
-      <h2 className="text-lg font-medium text-gray-900 mb-6">Your Transactions</h2>
+      <h2 className="text-lg font-medium text-gray-900 mb-6">Group Transactions</h2>
       
       {error && <ErrorMessage message={error} />}
 
@@ -53,7 +53,7 @@ const TransactionList = () => {
             No transactions yet
           </h3>
           <p className="mt-1 text-sm text-gray-500">
-            Your contributions and withdrawals will appear here.
+            Group contributions and withdrawals will appear here.
           </p>
         </div>
       ) : (
@@ -71,7 +71,7 @@ const TransactionList = () => {
                   scope="col"
                   className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
                 >
-                  Group
+                  Member
                 </th>
                 <th
                   scope="col"
@@ -100,7 +100,7 @@ const TransactionList = () => {
                     {new Date(transaction.timestamp).toLocaleDateString()}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                    {transaction.group_name}
+                    {transaction.user_username}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     <span
@@ -135,4 +135,4 @@ const TransactionList = () => {
   );
 };
 
-export default TransactionList;
+export default GroupTransactions;

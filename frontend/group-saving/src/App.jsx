@@ -1,45 +1,50 @@
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import { AuthProvider } from './components/context/AuthContext';
-import Navbar from './components/common/Navbar';
-import Footer from './components/common/Footer';
+import { Routes, Route } from 'react-router-dom';
+import { AuthProvider } from './context/AuthContext';
 import Home from './pages/Home';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
-import Profile from './components/auth/Profile';
-import GroupForm from './components/groups/GroupForm';
-import GroupDetails from './components/groups/GroupDetails';
-import AdminRoute from './components/Common/AdminRoute';
+import ProtectedRoute from './components/Common/ProtectedRoute';
+import Navbar from './components/Common/Navbar';
+import Footer from './components/Common/Footer';
+import GroupForm from './components/Groups/GroupForm';
+import Profile from './components/Auth/Profile';
+import GroupDetails from './components/Groups/GroupDetails';
+import AdminDashboard from './components/Dashboard/AdminDashboard';
+import MemberDashboard from './components/dashboard/MemberDashboard';
+import GroupList from  './components/Groups/GroupList'
+import GroupDiscovery from './components/Groups/GroupDiscovery';
+
 
 function App() {
   return (
-    <Router>
-      <AuthProvider>
-        <div className="min-h-screen flex flex-col">
-          <Navbar />
-          <main className="flex-grow container mx-auto px-4 py-6">
-            <Routes>
-              <Route path="/" element={<Home />} />
-              <Route path="/login" element={<Login />} />
-              <Route path="/register" element={<Register />} />
-              <Route path="/profile" element={<Profile />} />
-              <Route path="/dashboard" element={<Dashboard />} />
-              <Route path="/groups/create" element={<GroupForm />} />
-              <Route path="/groups/:groupId" element={<GroupDetails />} />
-              <Route
-                path="/groups/:groupId/admin/*"
-                element={
-                  <AdminRoute>
-                    <Dashboard />
-                  </AdminRoute>
-                }
-              />
-            </Routes>
-          </main>
-          <Footer />
-        </div>
-      </AuthProvider>
-    </Router>
+    <AuthProvider>
+      <div className="min-h-screen flex flex-col">
+        <Navbar />
+        <main className="flex-grow">
+          <Routes>
+            <Route path="/" element={<Home />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
+            
+            {/* Protected routes */}
+            <Route element={<ProtectedRoute />}>
+              <Route path="/dashboard" element={<Dashboard />}>
+                <Route index element={<GroupList />} />
+                <Route path="discover" element={<GroupDiscovery />} />
+                <Route path="create-group" element={<GroupForm />} />
+                <Route path="profile" element={<Profile />} />
+                <Route path="group/:groupId" element={<GroupDetails />}>
+                  <Route index element={<MemberDashboard />} />
+                  <Route path="admin" element={<AdminDashboard />} />
+                </Route>
+              </Route>
+            </Route>
+          </Routes>
+        </main>
+        <Footer />
+      </div>
+    </AuthProvider>
   );
 }
 

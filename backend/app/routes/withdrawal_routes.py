@@ -282,3 +282,38 @@ def get_user_available_balance(group_id):
         "total_withdrawn": user_withdrawals,
         "available_balance": max_allowed_withdrawal
     }), 200
+    
+@withdrawal_bp.route('/<int:withdrawal_id>/status', methods=['GET'])
+@jwt_required()
+def get_withdrawal_status(withdrawal_id):
+    """Get the status of a specific withdrawal request"""
+    current_user_id = get_jwt_identity()
+    
+    # Get the withdrawal request
+    withdrawal = WithdrawalRequest.query.get_or_404(withdrawal_id)
+    
+    # Check if user is either the requester or an admin of the group
+    if withdrawal.user_id != int(current_user_id):
+        # If not the requester, check if admin
+        status = Group.get_member_status(withdrawal.group_id, current_user_id)
+        if not status or status != 'admin':
+            return jsonify({"error": "You don't have permission to view this withdrawal"}), 403
+    
+    # Create a detailed status response
+    status_details = {
+        "id": withdrawal.id,
+        "status": withdrawal.status,
+        "amount": withdrawal.amount,
+        "timestamp": withdrawal.timestamp.isoformat(),
+        "updated_at": withdrawal.updated_at.isoformat(),
+        "group_id": withdrawal.group_id,
+        "group_name": withdrawal.group.name,
+        "description": withdrawal.description,
+        "admin_comment": withdrawal.admin_comment,
+        "processed_by": withdrawal.admin.username if withdrawal.admin else None,
+        "processed_at": withdrawal.updated_at.isoformat() if withdrawal.status != WithdrawalStatus.PENDING.value else None
+    }
+    
+    return jsonify({
+        "withdrawal_status": status_details
+    }), 200    

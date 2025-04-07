@@ -134,6 +134,26 @@ def join_group():
     else:
         return jsonify({"error": "Failed to join group"}), 500
 
+# ****************
+@group_bp.route('/discover', methods=['GET'])
+@jwt_required()
+def get_discoverable_groups():
+    current_user_id = get_jwt_identity()
+    
+    # Get all groups the user isn't already in
+    user_groups = db.session.query(group_members.c.group_id).filter(
+        group_members.c.user_id == current_user_id
+    )
+    
+    discoverable_groups = Group.query.filter(
+        ~Group.id.in_(user_groups)
+    ).all()
+    
+    return jsonify({
+        "groups": [group.to_dict() for group in discoverable_groups],
+        "count": len(discoverable_groups)
+    }), 200
+    
 @group_bp.route('/<int:group_id>/leave', methods=['POST'])
 @jwt_required()
 def leave_group(group_id):
@@ -269,3 +289,54 @@ def make_admin(group_id, user_id):
     except Exception as e:
         db.session.rollback()
         return jsonify({"error": "Failed to update admin status", "details": str(e)}), 500
+    
+    
+###### UPDATE GROUP DETAILS ######
+@group_bp.route('/<int:group_id>', methods=['PUT'])
+@jwt_required()
+def update_group(group_id):
+    # Get current user
+    current_user_id = get_jwt_identity()
+    current_user = User.query.get(current_user_id)
+    
+    if not current_user:
+        return jsonify({'error': 'User not found'}), 404
+    
+    # Get the group
+    group = Group.query.get(group_id)
+    if not group:
+        return jsonify({'error': 'Group not found'}), 404
+    
+    # Check if user is admin or creator
+    member_status = Group.get_member_status(group_id, current_user_id)
+    if member_status != 'admin' and group.creator_id != current_user_id:
+        return jsonify({'error': 'You do not have permission to update this group'}), 403
+    
+    # Get data from request
+    data = request.get_json()
+    if not data:
+        return jsonify({'error': 'No data provided'}), 400
+    
+    # Update allowed fields
+    if 'name' in data:
+        group.name = data['name']
+    
+    if 'description' in data:
+        group.description = data['description']
+    
+    if 'target_amount' in data:
+        try:
+            group.target_amount = float(data['target_amount'])
+        except (ValueError, TypeError):
+            return jsonify({'error': 'Invalid target amount'}), 400
+    
+    # Save changes
+    try:
+        db.session.commit()
+        return jsonify({
+            'message': 'Group updated successfully',
+            'group': group.to_dict()
+        }), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': f'Failed to update group: {str(e)}'}), 500
