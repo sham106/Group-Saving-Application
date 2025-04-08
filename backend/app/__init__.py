@@ -24,6 +24,10 @@ def create_app():
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
     app.config['SECRET_KEY'] = os.getenv('SECRET_KEY')
     app.config['JWT_SECRET_KEY'] = os.getenv('JWT_SECRET_KEY')
+    app.config['TINYPESA_API_KEY'] = os.getenv('TINYPESA_API_KEY')  # Add this line
+
+
+
     
     # Enable CORS
     CORS(app, origins=["http://localhost:5173"], 
@@ -53,10 +57,13 @@ def create_app():
     from .routes.group_routes import group_bp
     from .routes.transaction_routes import transaction_bp
     from .routes.withdrawal_routes import withdrawal_bp
+    from .routes.payment_routes import payment_routes
 
     app.register_blueprint(auth_bp, url_prefix='/api/auth')
     app.register_blueprint(group_bp, url_prefix='/api/groups')
     app.register_blueprint(transaction_bp, url_prefix='/api/transactions')
     app.register_blueprint(withdrawal_bp, url_prefix='/api/withdrawals')
+    app.register_blueprint(payment_routes)
+
 
     return app
