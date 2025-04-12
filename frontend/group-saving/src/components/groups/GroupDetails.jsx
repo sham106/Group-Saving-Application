@@ -50,13 +50,16 @@ const GroupDetails = () => {
     }
   };
 
+  const handleManageMembers = () => {
+    navigate(`/groups/${groupId}/manage-members`);
+  };
+
   if (loading) {
     return <LoadingSpinner />;
   }
 
   if (!group) {
     return <ErrorMessage message={error || 'Group not found'} />;
-  
   }
 
   const handleSaveGroup = async (updatedGroup) => {
@@ -76,6 +79,12 @@ const GroupDetails = () => {
   
   // Check if user is admin of the group
   const userIsAdmin = isAdmin(group);
+
+  // Ensure the activeTab is set to 'members' when navigating to the members page
+  const handleNavigateToMembers = () => {
+    setActiveTab('members');
+    navigate(`/dashboard/group/${groupId}/members`);
+  };
 
   return (
     <div className="space-y-6">
@@ -229,7 +238,7 @@ const GroupDetails = () => {
                   </div>
                   <p className="text-sm text-gray-500 mb-3">Add, remove, or promote group members</p>
                   <button
-                    onClick={() => navigate(`/dashboard/group/${groupId}/members`)}
+                    onClick={handleManageMembers}
                     className="w-full py-2 px-3 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
                   >
                     Manage Members

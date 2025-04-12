@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { contributeToGroup } from '../../services/TransactionService';
 import ErrorMessage from '../common/ErrorMessage';
-import PaymentForm from './PaymentForm';
+import MpesaContributionForm from './MpesaContributionForm';
 
 const ContributionForm = ({ groupId }) => {
   const [amount, setAmount] = useState('');
@@ -103,7 +103,7 @@ const ContributionForm = ({ groupId }) => {
               </label>
               <div className="mt-1 relative rounded-md shadow-sm">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <span className="text-gray-500 sm:text-sm">$</span>
+                  <span className="text-gray-500 sm:text-sm"></span>
                 </div>
                 <input
                   id="amount"
@@ -118,7 +118,7 @@ const ContributionForm = ({ groupId }) => {
                   placeholder="0.00"
                 />
                 <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                  <span className="text-gray-500 sm:text-sm">Ksh</span>
+                  <span className="text-gray-500 sm:text-sm ">Ksh</span>
                 </div>
               </div>
             </div>
@@ -154,7 +154,7 @@ const ContributionForm = ({ groupId }) => {
           </form>
         </>
       ) : (
-        <PaymentForm groupId={groupId} onPaymentInitiated={handlePaymentInitiated} />
+        <MpesaContributionForm groupId={groupId} onPaymentInitiated={handlePaymentInitiated} />
       )}
     </div>
   );

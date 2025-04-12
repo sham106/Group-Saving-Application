@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { getGroupStats } from '../../services/transactionService';
+import { getGroupStats } from '../../services/TransactionService';
 import LoadingSpinner from '../common/LoadingSpinner';
 import ErrorMessage from '../common/ErrorMessage';
 
@@ -43,19 +43,19 @@ const GroupStats = ({ groupId }) => {
         <div className="bg-blue-50 rounded-lg p-4">
           <h3 className="text-sm font-medium text-blue-800">Total Contributions</h3>
           <p className="mt-2 text-2xl font-semibold text-blue-600">
-            ${stats.total_contributions || 0}
+            Ksh.{stats.total_contributions || 0}
           </p>
         </div>
         <div className="bg-purple-50 rounded-lg p-4">
           <h3 className="text-sm font-medium text-purple-800">Total Withdrawals</h3>
           <p className="mt-2 text-2xl font-semibold text-purple-600">
-            ${stats.total_withdrawals || 0}
+            Ksh.{stats.total_withdrawals || 0}
           </p>
         </div>
         <div className="bg-green-50 rounded-lg p-4">
           <h3 className="text-sm font-medium text-green-800">Current Savings</h3>
           <p className="mt-2 text-2xl font-semibold text-green-600">
-            ${stats.current_amount || 0}
+            Ksh.{stats.current_amount || 0}
           </p>
         </div>
       </div>
@@ -77,7 +77,7 @@ const GroupStats = ({ groupId }) => {
                   </div>
                 </div>
                 <div className="text-sm font-medium text-green-600">
-                  ${contributor.total_contribution || 0}
+                  Ksh.{contributor.total_contribution || 0}
                 </div>
               </div>
             </li>
@@ -116,7 +116,7 @@ const GroupStats = ({ groupId }) => {
                       : 'text-purple-600'
                   }`}
                 >
-                  ${transaction.amount || 0}
+                  Ksh.{transaction.amount || 0}
                 </div>
               </div>
             </li>

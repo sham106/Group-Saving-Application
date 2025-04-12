@@ -7,6 +7,9 @@ from app.utils.validators import GroupSchema, JoinGroupSchema
 from app.utils.role_decorators import group_admin_required
 from marshmallow import ValidationError
 from sqlalchemy import and_
+from app.services.mpesa_service import MpesaService
+from app.models.transaction import Transaction
+
 
 group_bp = Blueprint('groups', __name__)
 
@@ -340,3 +343,209 @@ def update_group(group_id):
     except Exception as e:
         db.session.rollback()
         return jsonify({'error': f'Failed to update group: {str(e)}'}), 500
+    
+    
+# **************** Admin can remove members from certain groups ************ 
+@group_bp.route('/<int:group_id>/members/<int:user_id>', methods=['DELETE'])
+@jwt_required()
+@group_admin_required
+def remove_member(group_id, user_id):
+    """Remove a member from the group (admin only)"""
+    current_user_id = get_jwt_identity()
+    
+    # Check if group exists
+    group = Group.query.get_or_404(group_id)
+    
+    # Check if target user is a member
+    if not Group.get_member_status(group_id, user_id):
+        return jsonify({"error": "User is not a member of this group"}), 400
+    
+    # Prevent removing yourself (admins should use leave endpoint)
+    if user_id == current_user_id:
+        return jsonify({"error": "Use the leave group endpoint to remove yourself"}), 400
+    
+    # Prevent removing the creator
+    if group.creator_id == user_id:
+        return jsonify({"error": "Cannot remove the group creator"}), 403
+    
+    # Remove user from group
+    if Group.remove_member(group_id, user_id):
+        return jsonify({"message": "Member successfully removed from group"}), 200
+    else:
+        return jsonify({"error": "Failed to remove member"}), 500
+
+@group_bp.route('/<int:group_id>/promote/<int:user_id>', methods=['POST'])
+@jwt_required()
+@group_admin_required
+def promote_member(group_id, user_id):
+    """Promote a member to admin (admin only)"""
+    current_user_id = get_jwt_identity()
+    
+    # Check if group exists
+    group = Group.query.get_or_404(group_id)
+    
+    # Check if target user is a member
+    if not Group.get_member_status(group_id, user_id):
+        return jsonify({"error": "User is not a member of this group"}), 400
+    
+    # Check if already admin
+    member = db.session.query(group_members).filter(
+        and_(
+            group_members.c.group_id == group_id,
+            group_members.c.user_id == user_id
+        )
+    ).first()
+    
+    if member and member.is_admin:
+        return jsonify({"message": "User is already an admin"}), 400
+    
+    # Promote user to admin
+    try:
+        stmt = group_members.update().where(
+            and_(
+                group_members.c.group_id == group_id,
+                group_members.c.user_id == user_id
+            )
+        ).values(is_admin=True)
+        
+        db.session.execute(stmt)
+        db.session.commit()
+        
+        return jsonify({"message": "User promoted to admin successfully"}), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": "Failed to promote user", "details": str(e)}), 500
+    
+# ***********MPESA INTERGRATION ************ #
+
+@group_bp.route('/<int:group_id>/contribute/mpesa', methods=['POST'])
+@jwt_required()
+def initiate_mpesa_contribution(group_id):
+    """Initiate M-Pesa contribution"""
+    from app.models.transaction import Transaction, TransactionType
+    
+    current_user_id = get_jwt_identity()
+    data = request.get_json()
+    
+    # Validate input
+    if not data or 'phone_number' not in data or 'amount' not in data:
+        return jsonify({"error": "Phone number and amount are required"}), 400
+    
+    try:
+        amount = float(data['amount'])
+        if amount <= 0:
+            return jsonify({"error": "Amount must be positive"}), 400
+    except ValueError:
+        return jsonify({"error": "Invalid amount"}), 400
+    
+    # Get group details
+    group = Group.query.get_or_404(group_id)
+    
+    # Check if user is member
+    if not Group.get_member_status(group_id, current_user_id):
+        return jsonify({"error": "You are not a member of this group"}), 403
+    
+    # Initiate M-Pesa payment
+    try:
+        mpesa = MpesaService()
+        response = mpesa.initiate_stk_push(
+            phone_number=data['phone_number'],
+            amount=amount,
+            account_reference=f"GROUP{group_id}",
+            description=f"Contribution to {group.name}"
+        )
+        
+        # Create transaction record
+        transaction = Transaction(
+            amount=amount,
+            user_id=current_user_id,
+            group_id=group_id,
+            transaction_type=TransactionType.CONTRIBUTION,  # Enum value here
+            status='pending',
+            mpesa_request_id=response.get('CheckoutRequestID'),
+            reference=response.get('MerchantRequestID'),
+            description=f"M-Pesa contribution to {group.name}"
+        )
+        db.session.add(transaction)
+        db.session.commit()
+        
+        return jsonify({
+            "message": "Payment request sent to your phone",
+            "response": response
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": str(e)}), 500
+
+@group_bp.route('/mpesa/callback', methods=['POST'])
+def mpesa_callback():
+    """Handle M-Pesa callback"""
+    data = request.get_json()
+    current_app.logger.info(f"MPesa callback received: {data}")
+    
+    # Verify the  is from M-Pesa
+    # In production, you should validate the callback signature
+    
+    # Process the callback
+    try:
+        result_code = data['Body']['stkCallback']['ResultCode']
+        checkout_request_id = data['Body']['stkCallback']['CheckoutRequestID']
+        
+        # Find the transaction
+        transaction = Transaction.query.filter_by(
+            mpesa_request_id=checkout_request_id
+        ).first()
+        
+        if not transaction:
+            current_app.logger.error(f"Transaction not found for request ID: {checkout_request_id}")
+            return jsonify({"status": "error", "message": "Transaction not found"}), 404
+        
+        if result_code == 0:
+            # Success
+            transaction.status = 'completed'
+            transaction.mpesa_confirmation_code = data['Body']['stkCallback']['CallbackMetadata']['Item'][1]['Value']
+            
+            # Update group's current amount
+            group = Group.query.get(transaction.group_id)
+            if group:
+                group.current_amount += transaction.amount
+                
+            db.session.commit()
+            
+            current_app.logger.info(f"Transaction {transaction.id} completed successfully")
+        else:
+            # Failed
+            transaction.status = 'failed'
+            transaction.failure_reason = data['Body']['stkCallback']['ResultDesc']
+            db.session.commit()
+            current_app.logger.error(f"Transaction {transaction.id} failed: {transaction.failure_reason}")
+            
+        return jsonify({"status": "received"}), 200
+        
+    except Exception as e:
+        current_app.logger.error(f"Error processing callback: {str(e)}")
+        return jsonify({"status": "error", "message": str(e)}), 500
+    
+    
+@group_bp.route('/transactions/<string:reference>', methods=['GET'])
+@jwt_required()
+def get_transaction_status(reference):
+    """Check transaction status"""
+    transaction = Transaction.query.filter_by(reference=reference).first()
+    
+    if not transaction:
+        return jsonify({"error": "Transaction not found"}), 404
+    
+    # Check if current user is allowed to view this transaction
+    current_user_id = get_jwt_identity()
+    if transaction.user_id != current_user_id and not Group.get_member_status(transaction.group_id, current_user_id) == 'admin':
+        return jsonify({"error": "Not authorized"}), 403
+    
+    return jsonify({
+        "status": transaction.status,
+        "amount": transaction.amount,
+        "created_at": transaction.created_at.isoformat(),
+        "mpesa_confirmation_code": transaction.mpesa_confirmation_code,
+        "failure_reason": transaction.failure_reason
+    }), 200

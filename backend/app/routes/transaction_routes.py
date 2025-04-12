@@ -6,6 +6,7 @@ from app.models.user import User
 from app.models.groups import Group
 from app.models.transaction import Transaction, TransactionType
 from app.utils.validators import TransactionSchema
+from app.services.notification_service import NotificationService
 from marshmallow import ValidationError
 from sqlalchemy import func, desc
 
@@ -45,12 +46,18 @@ def contribute():
         # Add transaction to database
         db.session.add(new_transaction)
         
-        # Update group's current amount (will need to add this field to Group model)
+        # Update group's current amount
         group.current_amount = (group.current_amount or 0) + data['amount']
         
         db.session.commit()
         
-        # TODO: Trigger notification here (will implement in Phase 5)
+        # Send notifications to other group members
+        NotificationService.notify_group_members_about_contribution(
+            group_id=group_id,
+            contributor_id=current_user_id,
+            amount=data['amount'],
+            transaction_id=new_transaction.id
+        )
         
         return jsonify({
             "message": "Contribution successful",
@@ -172,3 +179,4 @@ def get_group_stats(group_id):
         } for contributor in top_contributors],
         "recent_transactions": [transaction.to_dict() for transaction in recent_transactions]
     }), 200
+    

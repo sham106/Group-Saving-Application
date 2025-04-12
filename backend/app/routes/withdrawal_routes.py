@@ -8,8 +8,14 @@ from app.models.transaction import Transaction, TransactionType
 from app.models.withdrawal_request import WithdrawalRequest, WithdrawalStatus
 from app.utils.validators import WithdrawalRequestSchema, WithdrawalActionSchema
 from app.utils.role_decorators import group_admin_required
+from app.services.notification_service import NotificationService
 from marshmallow import ValidationError
 from sqlalchemy import desc, func
+import logging
+
+# Configure logging
+logging.basicConfig(level=logging.ERROR)
+logger = logging.getLogger(__name__)
 
 withdrawal_bp = Blueprint('withdrawals', __name__)
 withdrawal_request_schema = WithdrawalRequestSchema()
@@ -83,7 +89,14 @@ def request_withdrawal():
         db.session.add(new_withdrawal)
         db.session.commit()
         
-        # TODO: Trigger notification to group admins here
+        # Send notifications to group admins
+        NotificationService.notify_about_withdrawal_request(
+            group_id=group_id,
+            requester_id=current_user_id,
+            amount=data['amount'],
+            reason=data.get('description', ''),
+            withdrawal_id=new_withdrawal.id
+        )
         
         return jsonify({
             "message": "Withdrawal request submitted successfully",
@@ -92,6 +105,7 @@ def request_withdrawal():
         }), 201
     except Exception as e:
         db.session.rollback()
+        logger.error("Error occurred while submitting withdrawal request", exc_info=True)
         return jsonify({"error": "Failed to submit withdrawal request", "details": str(e)}), 500
 
 @withdrawal_bp.route('/pending/<int:group_id>', methods=['GET'])
@@ -136,8 +150,9 @@ def process_withdrawal(withdrawal_id):
     # Check if request is already processed
     if withdrawal.status != WithdrawalStatus.PENDING.value:
         return jsonify({
-            "error": "This withdrawal request has already been processed",
-            "current_status": withdrawal.status
+            "error": "This withdrawal request has already been processed.",
+            "current_status": withdrawal.status,
+            "message": f"The withdrawal request is already marked as {withdrawal.status.lower()}."
         }), 400
     
     # Get the group
@@ -152,17 +167,17 @@ def process_withdrawal(withdrawal_id):
                 group_id=withdrawal.group_id,
                 transaction_type=TransactionType.CONTRIBUTION
             ).with_entities(func.sum(Transaction.amount)).scalar() or 0
-            
+
             # Calculate user's total approved withdrawals from the group
             user_withdrawals = Transaction.query.filter_by(
                 user_id=withdrawal.user_id,
                 group_id=withdrawal.group_id,
                 transaction_type=TransactionType.WITHDRAWAL
             ).with_entities(func.sum(Transaction.amount)).scalar() or 0
-            
+
             # Calculate user's maximum allowed withdrawal
             max_allowed_withdrawal = user_contributions - user_withdrawals
-            
+
             # Check if amount exceeds user's available balance
             if withdrawal.amount > max_allowed_withdrawal:
                 return jsonify({
@@ -172,7 +187,7 @@ def process_withdrawal(withdrawal_id):
                     "total_contributed": user_contributions,
                     "total_withdrawn": user_withdrawals
                 }), 400
-            
+
             # Check if amount still exceeds current group savings (as additional safeguard)
             if withdrawal.amount > group.current_amount:
                 return jsonify({
@@ -180,33 +195,53 @@ def process_withdrawal(withdrawal_id):
                     "requested": withdrawal.amount,
                     "available": group.current_amount
                 }), 400
-        
+
         # Update withdrawal request
         withdrawal.status = data['status']
         withdrawal.admin_id = current_user_id
         withdrawal.admin_comment = data.get('admin_comment')
-        
+
         # If approved, create transaction and update group balance
         if data['status'] == WithdrawalStatus.APPROVED.value:
             # Create transaction from withdrawal
             transaction = WithdrawalRequest.create_transaction_from_withdrawal(withdrawal)
             db.session.add(transaction)
-            
+
             # Update group's current amount
             group.current_amount = group.current_amount - withdrawal.amount
-        
+
         db.session.commit()
-        
-        # TODO: Trigger notification to the requester here
-        
+
+        # Send notification to the requester about the withdrawal approval/rejection
+        if data['status'] == WithdrawalStatus.APPROVED.value:
+            NotificationService.notify_about_withdrawal_approval(
+                withdrawal_request=withdrawal,
+                approver_id=current_user_id
+            )
+        elif data['status'] == WithdrawalStatus.REJECTED.value:
+            NotificationService.notify_about_withdrawal_rejection(
+                withdrawal_request=withdrawal,
+                approver_id=current_user_id
+            )
+
         return jsonify({
             "message": f"Withdrawal request {data['status']} successfully",
             "withdrawal_request": withdrawal.to_dict(),
             "group_updated_balance": group.current_amount if data['status'] == WithdrawalStatus.APPROVED.value else None
         }), 200
+    except ValueError as ve:
+        db.session.rollback()
+        logger.error(f"ValueError while processing withdrawal: {str(ve)}", exc_info=True)
+        return jsonify({"error": f"Invalid data: {str(ve)}"}), 400
+    except AttributeError as ae:
+        db.session.rollback()
+        logger.error(f"AttributeError while processing withdrawal: {str(ae)}", exc_info=True)
+        return jsonify({"error": f"Missing or invalid attribute: {str(ae)}"}), 400
     except Exception as e:
         db.session.rollback()
+        logger.error(f"Unexpected error while processing withdrawal: {str(e)}", exc_info=True)
         return jsonify({"error": f"Failed to {data['status']} withdrawal request", "details": str(e)}), 500
+
 
 @withdrawal_bp.route('/user', methods=['GET'])
 @jwt_required()
@@ -316,4 +351,4 @@ def get_withdrawal_status(withdrawal_id):
     
     return jsonify({
         "withdrawal_status": status_details
-    }), 200    
+    }), 200

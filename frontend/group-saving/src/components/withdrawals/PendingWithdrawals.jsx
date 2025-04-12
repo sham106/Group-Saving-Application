@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { getPendingWithdrawals, processWithdrawal } from '../../services/WithdrawalService';
 import LoadingSpinner from '../common/LoadingSpinner';
 import ErrorMessage from '../common/ErrorMessage';
@@ -9,45 +9,46 @@ const PendingWithdrawals = ({ groupId }) => {
   const [error, setError] = useState(null);
   const [processingIds, setProcessingIds] = useState([]);
 
-  useEffect(() => {
-    const fetchPendingWithdrawals = async () => {
-      try {
-        const response = await getPendingWithdrawals(groupId);
-        setWithdrawals(response.pending_withdrawals);
-      } catch (err) {
-        console.error("Error fetching withdrawals:", err);
-        setError(err.message || "Failed to load pending withdrawals");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchPendingWithdrawals();
+  // Use useCallback to create a stable function reference
+  const fetchPendingWithdrawals = useCallback(async () => {
+    try {
+      setLoading(true);
+      const response = await getPendingWithdrawals(groupId);
+      setWithdrawals(response.pending_withdrawals);
+      setError(null);
+    } catch (err) {
+      console.error("Error fetching withdrawals:", err);
+      setError(err.message || "Failed to load pending withdrawals");
+    } finally {
+      setLoading(false);
+    }
   }, [groupId]);
 
+  useEffect(() => {
+    fetchPendingWithdrawals();
+  }, [fetchPendingWithdrawals]);
+
   const handleProcessWithdrawal = async (withdrawalId, action) => {
+    setProcessingIds(prev => [...prev, withdrawalId]);
+    
     try {
-      setProcessingIds(prev => [...prev, withdrawalId]);
-      setError(null);
+      const comment = prompt(`Enter comment for ${action}:`) || '';
+      await processWithdrawal(withdrawalId, {
+        status: action,
+        admin_comment: comment
+      });
       
-      // Convert action to lowercase to match backend enum values
-      const payload = { status: action.toLowerCase() };
-      console.log(`Processing withdrawal ${withdrawalId} with action:`, payload);
-      
-      const result = await processWithdrawal(withdrawalId, payload);
-      console.log("Process result:", result);
-      
-      // Remove the processed withdrawal from the list
-      setWithdrawals(withdrawals.filter(w => w.id !== withdrawalId));
-    } catch (err) {
-      console.error("Error processing withdrawal:", err);
-      setError(`Failed to process withdrawal: ${err.message || "Unknown error"}`);
+      // Reload the data after processing
+      await fetchPendingWithdrawals();
+    } catch (error) {
+      alert(`Error: ${error.message}`);
+      console.error('Withdrawal processing error:', error);
     } finally {
       setProcessingIds(prev => prev.filter(id => id !== withdrawalId));
     }
   };
 
-  if (loading) return <LoadingSpinner />;
+  if (loading && withdrawals.length === 0) return <LoadingSpinner />;
 
   return (
     <div className="mt-4">

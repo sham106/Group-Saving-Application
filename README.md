@@ -4,6 +4,12 @@ The **Group Savings App** is a full-stack web application designed to help group
 
 ---
 
+## Problem Statement
+
+Managing group savings can be challenging due to a lack of transparency, accountability, and efficient tools. Traditional methods often lead to mismanagement, delays, and disputes among members. The Group Savings App addresses these issues by providing a digital platform that simplifies group savings, ensures transparency, and fosters trust among members.
+
+---
+
 ## Features
 
 ### Backend Features

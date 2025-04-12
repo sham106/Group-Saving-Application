@@ -50,7 +50,7 @@ const WithdrawalRequestForm = ({ groupId }) => {
       
       <div className="mb-4 p-3 bg-blue-50 rounded-md">
         <p className="text-sm text-blue-800">
-          Available balance: <span className="font-medium">${availableBalance}</span>
+          Available balance: <span className="font-medium">Ksh.{availableBalance}</span>
         </p>
       </div>
       
@@ -89,7 +89,7 @@ const WithdrawalRequestForm = ({ groupId }) => {
           </label>
           <div className="mt-1 relative rounded-md shadow-sm">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <span className="text-gray-500 sm:text-sm">$</span>
+              <span className="text-gray-500 sm:text-sm"></span>
             </div>
             <input
               id="amount"
@@ -109,7 +109,7 @@ const WithdrawalRequestForm = ({ groupId }) => {
             </div>
           </div>
           <p className="mt-1 text-xs text-gray-500">
-            Maximum: ${availableBalance}
+            Maximum: Ksh.{availableBalance}
           </p>
         </div>
 

@@ -18,12 +18,31 @@ export const getPendingWithdrawals = async (groupId) => {
   }
 };
 
+// Updated error handling to provide more detailed error messages
 export const processWithdrawal = async (withdrawalId, actionData) => {
   try {
-    const response = await api.post(`/api/withdrawals/${withdrawalId}/action`, actionData);
+    console.log('Processing withdrawal with payload:', {
+      withdrawalId,
+      actionData
+    });
+
+    const response = await api.post(`/api/withdrawals/${withdrawalId}/action`, {
+      status: actionData.status,  // 'approved' or 'rejected'
+      admin_comment: actionData.admin_comment || ''  // Ensure this matches the backend schema
+    });
+
     return response.data;
   } catch (error) {
-    throw new Error(error.error || 'Failed to process withdrawal');
+    console.error('Full error object:', error.response?.data || error);
+
+    // Improved error handling
+    const errorMessage = error.response?.data?.details || 
+                        error.response?.data?.error || 
+                        error.response?.data?.message || 
+                        error.message || 
+                        'Failed to process withdrawal';
+
+    throw new Error(errorMessage);
   }
 };
 
