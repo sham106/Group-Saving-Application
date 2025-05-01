@@ -1,7 +1,7 @@
 # CoSavr
 
 <div align="center">
-  <img src="./frontend/group-saving/src/assets/logop.png" alt="CoSavr Logo" />
+  <img src="./frontend/group-saving/src/assets/logo.jpg" alt="CoSavr Logo" />
   <br>
   <h3><em>Empowering communities through collaborative savings and financial growth</em></h3>
   <br>
