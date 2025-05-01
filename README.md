@@ -1,7 +1,8 @@
 # CoSavr
 
 <div align="center">
-  <img src="./frontend/group-saving/src/assets/logo.jpg" alt="CoSavr Logo" />
+  <img src="./frontend/group-saving/src/assets/logo.jpg/" 
+  alt="CoSavr Logo"  width='200'/>
   <br>
   <h3><em>Empowering communities through collaborative savings and financial growth</em></h3>
   <br>
@@ -200,7 +201,8 @@ We welcome contributions to CoSavr! Please follow these steps:
 For major changes, please open an issue first to discuss what you would like to change.
 
 ---
-
+## LIVE DEMO
+[![Live Demo](https://img.shields.io/badge/demo-online-green.svg)](https://group-saving.vercel.app/)
 ## 📄 License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
