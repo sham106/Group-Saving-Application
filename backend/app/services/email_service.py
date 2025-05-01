@@ -89,7 +89,7 @@ class EmailService:
         <body>
             <div class="container">
                 <div class="header">
-                    <h2>Group Savings Update</h2>
+                    <h2>CoSavr Update</h2>
                 </div>
                 <div class="content">
                     <p>Hello {{ recipient_name }},</p>
@@ -98,7 +98,7 @@ class EmailService:
                     <a href="{{ dashboard_url }}" class="button">View in Dashboard</a>
                 </div>
                 <div class="footer">
-                    <p>This is an automated message from the Group Savings App. Please do not reply to this email.</p>
+                    <p>This is an automated message from the CoSavr App. Please do not reply to this email.</p>
                 </div>
             </div>
         </body>
@@ -135,7 +135,7 @@ class EmailService:
                     <a href="{{ dashboard_url }}" class="button">View Request</a>
                 </div>
                 <div class="footer">
-                    <p>This is an automated message from the Group Savings App. Please do not reply to this email.</p>
+                    <p>This is an automated message from the CoSavr App. Please do not reply to this email.</p>
                 </div>
             </div>
         </body>
@@ -171,7 +171,7 @@ class EmailService:
                     <a href="{{ dashboard_url }}" class="button">View Details</a>
                 </div>
                 <div class="footer">
-                    <p>This is an automated message from the Group Savings App. Please do not reply to this email.</p>
+                    <p>This is an automated message from the CoSavr App. Please do not reply to this email.</p>
                 </div>
             </div>
         </body>
@@ -208,7 +208,7 @@ class EmailService:
                     <a href="{{ dashboard_url }}" class="button">View Details</a>
                 </div>
                 <div class="footer">
-                    <p>This is an automated message from the Group Savings App. Please do not reply to this email.</p>
+                    <p>This is an automated message from the CoSavr App. Please do not reply to this email.</p>
                 </div>
             </div>
         </body>

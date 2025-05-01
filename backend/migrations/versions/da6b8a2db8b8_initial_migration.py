@@ -1,8 +1,8 @@
 """Initial migration
 
-Revision ID: 51b476da9854
+Revision ID: da6b8a2db8b8
 Revises: 
-Create Date: 2025-04-11 15:58:01.309667
+Create Date: 2025-04-29 21:54:14.955897
 
 """
 from alembic import op
@@ -10,7 +10,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision = '51b476da9854'
+revision = 'da6b8a2db8b8'
 down_revision = None
 branch_labels = None
 depends_on = None
@@ -42,6 +42,18 @@ def upgrade():
     sa.ForeignKeyConstraint(['creator_id'], ['users.id'], ),
     sa.PrimaryKeyConstraint('id')
     )
+    op.create_table('group_loan_settings',
+    sa.Column('id', sa.Integer(), nullable=False),
+    sa.Column('max_loan_multiplier', sa.Float(), nullable=True),
+    sa.Column('base_interest_rate', sa.Float(), nullable=True),
+    sa.Column('min_repayment_period', sa.Integer(), nullable=True),
+    sa.Column('max_repayment_period', sa.Integer(), nullable=True),
+    sa.Column('late_penalty_rate', sa.Float(), nullable=True),
+    sa.Column('group_id', sa.Integer(), nullable=False),
+    sa.ForeignKeyConstraint(['group_id'], ['groups.id'], ),
+    sa.PrimaryKeyConstraint('id'),
+    sa.UniqueConstraint('group_id')
+    )
     op.create_table('group_members',
     sa.Column('user_id', sa.Integer(), nullable=False),
     sa.Column('group_id', sa.Integer(), nullable=False),
@@ -51,28 +63,42 @@ def upgrade():
     sa.ForeignKeyConstraint(['user_id'], ['users.id'], ),
     sa.PrimaryKeyConstraint('user_id', 'group_id')
     )
+    op.create_table('loans',
+    sa.Column('id', sa.Integer(), nullable=False),
+    sa.Column('amount', sa.Float(), nullable=False),
+    sa.Column('purpose', sa.String(length=255), nullable=True),
+    sa.Column('status', sa.Enum('PENDING', 'APPROVED', 'REJECTED', 'ACTIVE', 'PAID', 'DEFAULTED', name='loanstatus'), nullable=True),
+    sa.Column('interest_rate', sa.Float(), nullable=False),
+    sa.Column('duration_weeks', sa.Integer(), nullable=False),
+    sa.Column('approved_at', sa.DateTime(), nullable=True),
+    sa.Column('due_date', sa.DateTime(), nullable=True),
+    sa.Column('created_at', sa.DateTime(), nullable=True),
+    sa.Column('updated_at', sa.DateTime(), nullable=True),
+    sa.Column('group_id', sa.Integer(), nullable=False),
+    sa.Column('user_id', sa.Integer(), nullable=False),
+    sa.Column('approved_by_id', sa.Integer(), nullable=True),
+    sa.ForeignKeyConstraint(['approved_by_id'], ['users.id'], ),
+    sa.ForeignKeyConstraint(['group_id'], ['groups.id'], ),
+    sa.ForeignKeyConstraint(['user_id'], ['users.id'], ),
+    sa.PrimaryKeyConstraint('id')
+    )
     op.create_table('notifications',
     sa.Column('id', sa.Integer(), nullable=False),
-    sa.Column('type', sa.Enum('CONTRIBUTION', 'WITHDRAWAL_REQUEST', 'WITHDRAWAL_APPROVED', 'WITHDRAWAL_REJECTED', name='notificationtype'), nullable=False),
+    sa.Column('type', sa.String(length=50), nullable=False),
     sa.Column('message', sa.String(length=255), nullable=False),
+    sa.Column('recipient_id', sa.Integer(), nullable=False),
+    sa.Column('group_id', sa.Integer(), nullable=True),
     sa.Column('created_at', sa.DateTime(), nullable=True),
     sa.Column('read', sa.Boolean(), nullable=True),
-    sa.Column('emailed', sa.Boolean(), nullable=True),
-    sa.Column('recipient_id', sa.Integer(), nullable=False),
-    sa.Column('sender_id', sa.Integer(), nullable=True),
-    sa.Column('group_id', sa.Integer(), nullable=False),
-    sa.Column('reference_id', sa.Integer(), nullable=True),
-    sa.Column('reference_amount', sa.Float(), nullable=True),
     sa.ForeignKeyConstraint(['group_id'], ['groups.id'], ),
     sa.ForeignKeyConstraint(['recipient_id'], ['users.id'], ),
-    sa.ForeignKeyConstraint(['sender_id'], ['users.id'], ),
     sa.PrimaryKeyConstraint('id')
     )
     op.create_table('transactions',
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('amount', sa.Float(), nullable=False),
     sa.Column('description', sa.String(length=255), nullable=True),
-    sa.Column('transaction_type', sa.Enum('CONTRIBUTION', 'WITHDRAWAL', name='transactiontype'), nullable=False),
+    sa.Column('transaction_type', sa.Enum('CONTRIBUTION', 'WITHDRAWAL', 'LOAN_REQUEST', 'LOAN_REPAYMENT', 'LOAN_DISBURSEMENT', name='transactiontype'), nullable=False),
     sa.Column('timestamp', sa.DateTime(), nullable=True),
     sa.Column('status', sa.String(length=20), nullable=True),
     sa.Column('mpesa_request_id', sa.String(length=50), nullable=True),
@@ -102,15 +128,30 @@ def upgrade():
     sa.ForeignKeyConstraint(['user_id'], ['users.id'], ),
     sa.PrimaryKeyConstraint('id')
     )
+    op.create_table('loan_repayments',
+    sa.Column('id', sa.Integer(), nullable=False),
+    sa.Column('amount', sa.Float(), nullable=False),
+    sa.Column('amount_paid', sa.Float(), nullable=True),
+    sa.Column('due_date', sa.DateTime(), nullable=False),
+    sa.Column('status', sa.Enum('PENDING', 'PAID', 'PARTIAL', 'LATE', name='repaymentstatus'), nullable=True),
+    sa.Column('paid_at', sa.DateTime(), nullable=True),
+    sa.Column('created_at', sa.DateTime(), nullable=True),
+    sa.Column('loan_id', sa.Integer(), nullable=False),
+    sa.ForeignKeyConstraint(['loan_id'], ['loans.id'], ),
+    sa.PrimaryKeyConstraint('id')
+    )
     # ### end Alembic commands ###
 
 
 def downgrade():
     # ### commands auto generated by Alembic - please adjust! ###
+    op.drop_table('loan_repayments')
     op.drop_table('withdrawal_requests')
     op.drop_table('transactions')
     op.drop_table('notifications')
+    op.drop_table('loans')
     op.drop_table('group_members')
+    op.drop_table('group_loan_settings')
     op.drop_table('groups')
     op.drop_table('users')
     # ### end Alembic commands ###
