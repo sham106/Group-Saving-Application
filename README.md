@@ -51,6 +51,11 @@ In many communities, group savings initiatives (such as "chama", "table banking"
 - **Status Monitoring**: Full loan lifecycle tracking from request to full repayment
 - **Notification System**: Automated alerts for approvals, rejections, and payment reminders
 
+### 🔔 Notification System
+- **Real-time Alerts**: Instant notifications for contributions, withdrawals, and loan activities
+- **Email Notifications**: Customizable email alerts for important account activities
+- **Action Reminders**: Timely reminders for pending loan repayments and scheduled contributions
+
 ### 🖥️ User Interface Features
 - **Responsive Design**: Built with React and TailwindCSS for a seamless experience across devices
 - **Interactive Dashboards**: Separate views for admins and members with role-appropriate controls
